@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "Hanout",
+    "slug": "hanout",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "hanout",
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.hanout.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#080818",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sharing",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "L'application a besoin d'accéder à vos photos pour ajouter des factures.",
+          "cameraPermission": "L'application a besoin d'accéder à la caméra pour photographier les factures."
+        }
+      ]
+    ]
+  }
+}
