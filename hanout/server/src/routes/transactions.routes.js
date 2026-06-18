@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import crypto from 'crypto';
 import db from '../db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { TX_GROUP_IDS, buildDesignation, getGroup } from '../constants.js';
 
 const router = Router();
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 
 function toResponse(row) {
   return {
@@ -20,13 +20,18 @@ function toResponse(row) {
     description: row.description,
     hasPhoto: !!row.has_photo,
     createdAt: row.created_at,
+    createdBy: row.created_by ?? undefined,
   };
 }
 
 router.get('/', (req, res) => {
   const rows = db
-    .prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY date DESC, created_at DESC')
-    .all(req.user.id);
+    .prepare(
+      `SELECT transactions.*, users.name AS created_by
+       FROM transactions JOIN users ON users.id = transactions.user_id
+       ORDER BY date DESC, transactions.created_at DESC`
+    )
+    .all();
   res.json({ transactions: rows.map(toResponse) });
 });
 
@@ -78,23 +83,19 @@ router.post('/', (req, res) => {
 });
 
 router.get('/:id/photo', (req, res) => {
-  const row = db
-    .prepare('SELECT photo FROM transactions WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.id);
+  const row = db.prepare('SELECT photo FROM transactions WHERE id = ?').get(req.params.id);
   if (!row || !row.photo) return res.status(404).json({ error: 'Photo introuvable.' });
   res.json({ photo: row.photo });
 });
 
 router.delete('/:id', (req, res) => {
-  const result = db
-    .prepare('DELETE FROM transactions WHERE id = ? AND user_id = ?')
-    .run(req.params.id, req.user.id);
+  const result = db.prepare('DELETE FROM transactions WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Transaction introuvable.' });
   res.status(204).end();
 });
 
 router.delete('/', (req, res) => {
-  db.prepare('DELETE FROM transactions WHERE user_id = ?').run(req.user.id);
+  db.prepare('DELETE FROM transactions').run();
   res.status(204).end();
 });
 

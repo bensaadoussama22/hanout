@@ -10,11 +10,12 @@ export interface Transaction {
   entree: number;
   sortie: number;
   hasPhoto?: boolean;
+  createdBy?: string;
 }
 
-export function useFinance() {
+export function useFinance(enabled: boolean = true) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
 
   const refresh = useCallback(async () => {
     const data = await apiFetch('/transactions');
@@ -22,8 +23,9 @@ export function useFinance() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     refresh().finally(() => setLoading(false));
-  }, [refresh]);
+  }, [enabled, refresh]);
 
   const addTransaction = useCallback(async (tx: Partial<Transaction> & { photo?: string | null; name?: string; hasPhoto?: boolean }) => {
     const data = await apiFetch('/transactions', {

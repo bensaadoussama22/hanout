@@ -1,9 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Android emulator: 10.0.2.2 maps to the host machine's localhost.
-// iOS simulator: use 'http://localhost:4000/api' instead.
-// Real device: use your machine's LAN IP instead.
-const API_URL = 'http://10.0.2.2:4000/api';
+// Hosted backend (cPanel). Override at build time with EXPO_PUBLIC_API_URL if needed.
+export const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://bensd-ouss.com/api';
 const TOKEN_KEY = 'hanout_token';
 
 export class ApiError extends Error {

@@ -1,24 +1,77 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import {
   Settings as SettingsIcon, Trash2, Download, ChevronRight,
-  AlertCircle, FileSpreadsheet, User, LogOut,
+  AlertCircle, FileSpreadsheet, User, LogOut, Users, UserPlus,
 } from 'lucide-react-native';
 import Header from '../../components/ui/Header';
 import { useAuth } from '../../context/AuthContext';
 import { useArticles } from '../../hooks/useArticles';
 import { useFinance } from '../../hooks/useFinance';
 import { downloadAndShareExcelReport } from '../../utils/exportExcel';
-import { apiFetch } from '../../utils/api';
+import { apiFetch, ApiError } from '../../utils/api';
+
+interface AccountUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'travailleur';
+}
 
 export default function Settings() {
   const { user, logout } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { articles, removeArticle } = useArticles();
-  const { transactions, removeTransaction } = useFinance();
+  const { transactions, removeTransaction } = useFinance(isAdmin);
   const [confirmClear, setConfirmClear] = useState('');
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
+
+  const [accounts, setAccounts] = useState<AccountUser[]>([]);
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newRole, setNewRole] = useState<'admin' | 'travailleur'>('travailleur');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+
+  const refreshAccounts = useCallback(async () => {
+    try {
+      const data = await apiFetch('/auth/users');
+      setAccounts(data.users);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) refreshAccounts();
+  }, [isAdmin, refreshAccounts]);
+
+  const handleCreateAccount = async () => {
+    setCreateError('');
+    if (!newName.trim() || !newEmail.trim() || newPassword.length < 6) {
+      setCreateError('Nom, e-mail et mot de passe (6 caractères min.) requis.');
+      return;
+    }
+    setCreating(true);
+    try {
+      await apiFetch('/auth/users', {
+        method: 'POST',
+        body: { name: newName.trim(), email: newEmail.trim(), password: newPassword, role: newRole },
+      });
+      setNewName('');
+      setNewEmail('');
+      setNewPassword('');
+      setNewRole('travailleur');
+      await refreshAccounts();
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : 'Création impossible.');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleExcelExport = async () => {
     setExporting(true);
@@ -67,82 +120,158 @@ export default function Settings() {
           </View>
         </Section>
 
-        {/* Export */}
-        <Section title="Exporter les données" icon={<Download size={16} color="rgba(255,255,255,0.35)" />}>
-          <TouchableOpacity
-            onPress={handleExcelExport}
-            disabled={exporting}
-            style={[styles.exportBtn, exporting && styles.disabled]}
-            activeOpacity={0.7}
-          >
-            <View style={styles.exportLeft}>
-              <FileSpreadsheet size={16} color="rgba(255,255,255,0.4)" />
-              <View>
-                <Text style={styles.exportTitle}>
-                  {exporting ? 'Génération en cours...' : 'Rapport de gestion (Excel)'}
-                </Text>
-                <Text style={styles.exportSubtitle}>{transactions.length} transactions · 3 feuilles</Text>
+        {isAdmin && (
+          <>
+            {/* Gestion des comptes */}
+            <Section title="Gestion des comptes" icon={<Users size={16} color="rgba(255,255,255,0.35)" />}>
+              {accounts.map((a) => (
+                <View key={a.id} style={styles.accountListRow}>
+                  <View>
+                    <Text style={styles.accountName}>{a.name}</Text>
+                    <Text style={styles.accountEmail}>{a.email}</Text>
+                  </View>
+                  <View style={[styles.roleBadge, a.role === 'admin' && styles.roleBadgeAdmin]}>
+                    <Text style={styles.roleBadgeText}>{a.role === 'admin' ? 'Admin' : 'Travailleur'}</Text>
+                  </View>
+                </View>
+              ))}
+
+              <View style={styles.newAccountForm}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Nom"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  value={newName}
+                  onChangeText={setNewName}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="E-mail"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  value={newEmail}
+                  onChangeText={setNewEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Mot de passe (6 caractères min.)"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                />
+                <View style={styles.roleRow}>
+                  {(['travailleur', 'admin'] as const).map((r) => (
+                    <TouchableOpacity
+                      key={r}
+                      onPress={() => setNewRole(r)}
+                      style={[styles.roleOption, newRole === r && styles.roleOptionActive]}
+                    >
+                      <Text style={[styles.roleOptionText, newRole === r && styles.roleOptionTextActive]}>
+                        {r === 'admin' ? 'Admin' : 'Travailleur'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {!!createError && (
+                  <View style={styles.errorBox}>
+                    <AlertCircle size={14} color="rgba(255,255,255,0.6)" />
+                    <Text style={styles.errorText}>{createError}</Text>
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  onPress={handleCreateAccount}
+                  disabled={creating}
+                  style={[styles.createBtn, creating && styles.disabled]}
+                  activeOpacity={0.8}
+                >
+                  <UserPlus size={15} color="#080818" />
+                  <Text style={styles.createBtnText}>{creating ? 'Création...' : 'Créer le compte'}</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-            {exporting
-              ? <ActivityIndicator size="small" color="rgba(255,255,255,0.5)" />
-              : <ChevronRight size={16} color="rgba(255,255,255,0.2)" />}
-          </TouchableOpacity>
-          {!!exportError && (
-            <View style={styles.errorBox}>
-              <AlertCircle size={14} color="rgba(255,255,255,0.6)" />
-              <Text style={styles.errorText}>{exportError}</Text>
-            </View>
-          )}
-        </Section>
+            </Section>
 
-        {/* Stats */}
-        <Section title="Statistiques" icon={<SettingsIcon size={16} color="rgba(255,255,255,0.35)" />}>
-          {[
-            { label: 'Articles en liste', value: articles.length },
-            { label: 'Transactions totales', value: transactions.length },
-          ].map((stat, i) => (
-            <View key={stat.label} style={[styles.statRow, i === 0 && styles.statRowBorder]}>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-            </View>
-          ))}
-        </Section>
+            {/* Export */}
+            <Section title="Exporter les données" icon={<Download size={16} color="rgba(255,255,255,0.35)" />}>
+              <TouchableOpacity
+                onPress={handleExcelExport}
+                disabled={exporting}
+                style={[styles.exportBtn, exporting && styles.disabled]}
+                activeOpacity={0.7}
+              >
+                <View style={styles.exportLeft}>
+                  <FileSpreadsheet size={16} color="rgba(255,255,255,0.4)" />
+                  <View>
+                    <Text style={styles.exportTitle}>
+                      {exporting ? 'Génération en cours...' : 'Rapport de gestion (Excel)'}
+                    </Text>
+                    <Text style={styles.exportSubtitle}>{transactions.length} transactions · 3 feuilles</Text>
+                  </View>
+                </View>
+                {exporting
+                  ? <ActivityIndicator size="small" color="rgba(255,255,255,0.5)" />
+                  : <ChevronRight size={16} color="rgba(255,255,255,0.2)" />}
+              </TouchableOpacity>
+              {!!exportError && (
+                <View style={styles.errorBox}>
+                  <AlertCircle size={14} color="rgba(255,255,255,0.6)" />
+                  <Text style={styles.errorText}>{exportError}</Text>
+                </View>
+              )}
+            </Section>
 
-        {/* Danger zone */}
-        <Section title="Zone dangereuse" icon={<Trash2 size={16} color="rgba(255,255,255,0.5)" />}>
-          <Text style={styles.dangerNote}>Ces actions sont irréversibles.</Text>
+            {/* Stats */}
+            <Section title="Statistiques" icon={<SettingsIcon size={16} color="rgba(255,255,255,0.35)" />}>
+              {[
+                { label: 'Articles en liste', value: articles.length },
+                { label: 'Transactions totales', value: transactions.length },
+              ].map((stat, i) => (
+                <View key={stat.label} style={[styles.statRow, i === 0 && styles.statRowBorder]}>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                </View>
+              ))}
+            </Section>
 
-          {confirmClear === 'articles' ? (
-            <View style={styles.confirmRow}>
-              <TouchableOpacity onPress={clearArticles} style={styles.confirmBtn}>
-                <Text style={styles.confirmText}>Confirmer la suppression</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setConfirmClear('')} style={styles.cancelBtn}>
-                <Text style={styles.cancelText}>Annuler</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={() => setConfirmClear('articles')} style={styles.dangerBtn}>
-              <Text style={styles.dangerBtnText}>Vider la liste des articles</Text>
-            </TouchableOpacity>
-          )}
+            {/* Danger zone */}
+            <Section title="Zone dangereuse" icon={<Trash2 size={16} color="rgba(255,255,255,0.5)" />}>
+              <Text style={styles.dangerNote}>Ces actions sont irréversibles.</Text>
 
-          {confirmClear === 'transactions' ? (
-            <View style={styles.confirmRow}>
-              <TouchableOpacity onPress={clearTransactions} style={styles.confirmBtn}>
-                <Text style={styles.confirmText}>Confirmer la suppression</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setConfirmClear('')} style={styles.cancelBtn}>
-                <Text style={styles.cancelText}>Annuler</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={() => setConfirmClear('transactions')} style={styles.dangerBtn}>
-              <Text style={styles.dangerBtnText}>Vider toutes les transactions</Text>
-            </TouchableOpacity>
-          )}
-        </Section>
+              {confirmClear === 'articles' ? (
+                <View style={styles.confirmRow}>
+                  <TouchableOpacity onPress={clearArticles} style={styles.confirmBtn}>
+                    <Text style={styles.confirmText}>Confirmer la suppression</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setConfirmClear('')} style={styles.cancelBtn}>
+                    <Text style={styles.cancelText}>Annuler</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setConfirmClear('articles')} style={styles.dangerBtn}>
+                  <Text style={styles.dangerBtnText}>Vider la liste des articles</Text>
+                </TouchableOpacity>
+              )}
+
+              {confirmClear === 'transactions' ? (
+                <View style={styles.confirmRow}>
+                  <TouchableOpacity onPress={clearTransactions} style={styles.confirmBtn}>
+                    <Text style={styles.confirmText}>Confirmer la suppression</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => setConfirmClear('')} style={styles.cancelBtn}>
+                    <Text style={styles.cancelText}>Annuler</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setConfirmClear('transactions')} style={styles.dangerBtn}>
+                  <Text style={styles.dangerBtnText}>Vider toutes les transactions</Text>
+                </TouchableOpacity>
+              )}
+            </Section>
+          </>
+        )}
 
         <Text style={styles.footer}>Bensaad Article Ménage & Gâteau — v1.0</Text>
       </ScrollView>
@@ -193,6 +322,40 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
   logoutText: { fontSize: 14, fontWeight: '600', color: 'white' },
+  accountListRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  roleBadge: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  roleBadgeAdmin: { backgroundColor: 'rgba(120,160,255,0.18)' },
+  roleBadgeText: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
+  newAccountForm: { marginTop: 16, gap: 10 },
+  input: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    color: 'white',
+    fontSize: 14,
+  },
+  roleRow: { flexDirection: 'row', gap: 8 },
+  roleOption: {
+    flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  roleOptionActive: { backgroundColor: 'white', borderColor: 'white' },
+  roleOptionText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
+  roleOptionTextActive: { color: '#080818' },
+  createBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: 'white', borderRadius: 12, paddingVertical: 12,
+  },
+  createBtnText: { fontSize: 14, fontWeight: '700', color: '#080818' },
   exportBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12,

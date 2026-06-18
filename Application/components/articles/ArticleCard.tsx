@@ -34,6 +34,7 @@ export default function ArticleCard({ article, onStatusChange, onDelete, onMarkI
 
         <View style={styles.info}>
           <View style={styles.titleRow}>
+            {article.urgent && <View style={styles.urgentDot} />}
             <Text style={styles.name} numberOfLines={1}>{article.name}</Text>
             <View style={styles.badge}>
               <Text style={[styles.badgeText, isAchete ? styles.badgeBought : styles.badgePending]}>
@@ -46,6 +47,9 @@ export default function ArticleCard({ article, onStatusChange, onDelete, onMarkI
           )}
           {!!article.barcode && (
             <Text style={styles.barcode}>{article.barcode}</Text>
+          )}
+          {!!article.createdBy && (
+            <Text style={styles.meta}>Ajouté par {article.createdBy}</Text>
           )}
         </View>
 
@@ -131,6 +135,7 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  urgentDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#e23c3c' },
   name: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.9)', flexShrink: 1 },
   badge: {
     backgroundColor: 'rgba(255,255,255,0.08)',

@@ -6,7 +6,7 @@ import {
 import { X, Package } from 'lucide-react-native';
 
 interface Props {
-  onAdd: (article: { name: string; quantity: number; notes: string }) => void;
+  onAdd: (article: { name: string; quantity: number; notes: string; urgent: boolean }) => void;
   onClose: () => void;
 }
 
@@ -14,10 +14,11 @@ export default function AddArticleModal({ onAdd, onClose }: Props) {
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
+  const [urgent, setUrgent] = useState(false);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    onAdd({ name: name.trim(), quantity, notes });
+    onAdd({ name: name.trim(), quantity, notes, urgent });
     onClose();
   };
 
@@ -90,6 +91,15 @@ export default function AddArticleModal({ onAdd, onClose }: Props) {
                   numberOfLines={3}
                 />
               </Field>
+
+              <TouchableOpacity
+                onPress={() => setUrgent((v) => !v)}
+                style={[styles.urgentRow, urgent && styles.urgentRowActive]}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.urgentDot, urgent && styles.urgentDotActive]} />
+                <Text style={[styles.urgentText, urgent && styles.urgentTextActive]}>Article urgent</Text>
+              </TouchableOpacity>
             </ScrollView>
 
             <View style={styles.footer}>
@@ -192,6 +202,31 @@ const styles = StyleSheet.create({
   },
   qBtnText: { fontSize: 22, fontWeight: '700', color: 'rgba(255,255,255,0.55)' },
   qInput: { flex: 1, fontWeight: '600' },
+  urgentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 4,
+  },
+  urgentRowActive: {
+    backgroundColor: 'rgba(220,60,60,0.15)',
+    borderColor: 'rgba(220,60,60,0.4)',
+  },
+  urgentDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  urgentDotActive: { backgroundColor: '#e23c3c' },
+  urgentText: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.4)' },
+  urgentTextActive: { color: 'rgba(255,140,140,0.95)' },
   footer: {
     paddingHorizontal: 20,
     paddingTop: 12,

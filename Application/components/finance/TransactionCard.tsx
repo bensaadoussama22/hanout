@@ -51,7 +51,10 @@ export default function TransactionCard({ transaction, onDelete }: Props) {
               {!!transaction.description && (
                 <Text style={styles.desc} numberOfLines={1}>{transaction.description}</Text>
               )}
-              <Text style={styles.date}>{formatDate(transaction.date)}</Text>
+              <Text style={styles.date}>
+                {formatDate(transaction.date)}
+                {transaction.createdBy ? ` · ${transaction.createdBy}` : ''}
+              </Text>
             </View>
             <View style={styles.amountBlock}>
               {transaction.hasPhoto && <Camera size={14} color="rgba(255,255,255,0.2)" />}

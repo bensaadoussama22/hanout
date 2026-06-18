@@ -8,7 +8,9 @@ export interface Article {
   notes?: string;
   quantity: number;
   status: 'fini' | 'achete';
+  urgent: boolean;
   createdAt: string;
+  createdBy?: string;
 }
 
 export function useArticles() {
@@ -32,6 +34,7 @@ export function useArticles() {
         barcode: article.barcode || '',
         notes: article.notes || '',
         quantity: article.quantity || 1,
+        urgent: article.urgent || false,
       },
     });
     setArticles((prev) => [data.article, ...prev]);

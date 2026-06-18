@@ -11,6 +11,8 @@ export default function TabsLayout() {
 
   if (!user) return <Redirect href="/(auth)/login" />;
 
+  const isAdmin = user.role === 'admin';
+
   return (
     <Tabs
       screenOptions={{
@@ -32,6 +34,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Accueil',
+          href: isAdmin ? undefined : null,
           tabBarIcon: ({ color, focused }) => <TabIcon Icon={LayoutDashboard} color={color} focused={focused} />,
         }}
       />
@@ -46,6 +49,7 @@ export default function TabsLayout() {
         name="finance"
         options={{
           title: 'Finance',
+          href: isAdmin ? undefined : null,
           tabBarIcon: ({ color, focused }) => <TabIcon Icon={Wallet} color={color} focused={focused} />,
         }}
       />

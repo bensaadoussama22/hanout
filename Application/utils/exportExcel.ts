@@ -1,9 +1,6 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { getToken, ApiError } from './api';
-
-// Keep in sync with utils/api.ts
-const API_URL = 'http://10.0.2.2:4000/api';
+import { getToken, ApiError, API_URL } from './api';
 
 export async function downloadAndShareExcelReport() {
   const token = await getToken();

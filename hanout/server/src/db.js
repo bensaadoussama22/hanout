@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import bcrypt from 'bcryptjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, '..', 'data');
@@ -17,6 +18,7 @@ db.exec(`
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'travailleur',
     created_at TEXT NOT NULL
   );
 
@@ -43,10 +45,28 @@ db.exec(`
     status TEXT NOT NULL DEFAULT 'fini',
     notes TEXT NOT NULL DEFAULT '',
     quantity INTEGER NOT NULL DEFAULT 1,
+    urgent INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_articles_user ON articles(user_id);
 `);
+
+// Migrate databases created before role/urgent existed.
+const userColumns = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+if (!userColumns.includes('role')) {
+  db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'travailleur'");
+}
+const articleColumns = db.prepare("PRAGMA table_info(articles)").all().map((c) => c.name);
+if (!articleColumns.includes('urgent')) {
+  db.exec('ALTER TABLE articles ADD COLUMN urgent INTEGER NOT NULL DEFAULT 0');
+}
+
+const hasAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin'").get();
+if (!hasAdmin) {
+  db.prepare(
+    'INSERT INTO users (name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run('Admin', 'admin@admin.admin', bcrypt.hashSync('admin', 10), 'admin', new Date().toISOString());
+}
 
 export default db;

@@ -1,16 +1,16 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { generateRapportExcel } from '../services/excelReport.js';
 
 const router = Router();
-router.use(requireAuth);
+router.use(requireAuth, requireAdmin);
 
 router.get('/excel', async (req, res) => {
   const { from, to } = req.query;
 
-  let query = 'SELECT * FROM transactions WHERE user_id = ?';
-  const params = [req.user.id];
+  let query = 'SELECT * FROM transactions WHERE 1 = 1';
+  const params = [];
 
   if (from) {
     query += ' AND date >= ?';

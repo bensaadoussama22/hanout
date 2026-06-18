@@ -3,7 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
@@ -103,11 +103,6 @@ export default function Login() {
             </Text>
           </TouchableOpacity>
         </View>
-
-        <Text style={styles.switchText}>
-          Pas encore de compte ?{' '}
-          <Link href="/(auth)/signup" style={styles.switchLink}>Créer un compte</Link>
-        </Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );
