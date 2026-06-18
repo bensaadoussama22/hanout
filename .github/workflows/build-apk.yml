@@ -34,12 +34,14 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --non-interactive
 
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: Application/android
-        run: ./gradlew assembleDebug
+        env:
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://bensd-ouss.com/api' }}
+        run: ./gradlew assembleRelease
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hanout-debug-apk
-          path: Application/android/app/build/outputs/apk/debug/app-debug.apk
+          name: hanout-release-apk
+          path: Application/android/app/build/outputs/apk/release/app-release.apk
